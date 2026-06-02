@@ -24,10 +24,10 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
     return (localStorage.getItem("lifelink_map_provider") as "leaflet" | "google") || "google";
   });
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem("lifelink_google_api_key") || "AIzaSyAfzk7iHUpDcxSqFewvlR-TIIRp625d01c";
+    return localStorage.getItem("lifelink_google_api_key") || "";
   });
   const [showSettings, setShowSettings] = useState(false);
-  const [apiInput, setApiInput] = useState(apiKey || "AIzaSyAfzk7iHUpDcxSqFewvlR-TIIRp625d01c");
+  const [apiInput, setApiInput] = useState(apiKey || "");
   const [googleReady, setGoogleReady] = useState(false);
 
   // Map instance references
