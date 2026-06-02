@@ -8,18 +8,18 @@ This project is built using **React 19**, **TypeScript**, and **Vite**, featurin
 
 ## 🚀 Prototype Architecture Overview
 
-The current prototype consolidates the entire client-side interface and mock data logic in [App.tsx](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx). Key modules include:
+The prototype is built with a clean separation of concerns, hosting component markup and logic in [App.tsx](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx) and all layout and design styling consolidated in [App.css](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.css). Key modules include:
 
 1. **🔐 Multi-Role Authentication Screen ([AuthScreen](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L126))**:
-   - Supports role selection (Donor, Recipient, and Admin).
+   - Supports role selection (Donor, Recipient, and Admin) and seamless **Logout** redirection.
    - Features a styled OTP entry verification interface.
 2. **🤲 Donor Dashboard ([DonorDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L259))**:
    - Displays donor statistics (Donations, Lives Saved, Days Since Last Donation).
    - Provides live eligibility indicators with visual pulse rings.
-   - Shows local emergency requests and a "Respond Now" trigger.
+   - Shows local emergency requests and triggers an interactive **Confirm Donation Response Modal** to register commitments.
 3. **🏥 Recipient Dashboard ([RecipientDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L355))**:
-   - Interactive search engine displaying nearby compatible donors sorted by distance.
-   - Includes action triggers to call donors or send direct requests.
+   - Includes a **City/Location Selector** supporting major cities (Bengaluru, Mumbai, Delhi, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad) which auto-filters donors and centers the map dynamically.
+   - Interactive proximity search displaying matching compatible donors sorted by distance.
    - Features a **Broadcast Emergency Request** system notifying matching donors.
 4. **📋 Donor Registration & Screening ([RegisterDonor](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L528))**:
    - A multi-step flow capturing personal details, weight, and city.

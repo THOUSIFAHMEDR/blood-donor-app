@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import type { Donor } from "../App";
 
@@ -38,6 +39,36 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
   const googleMarkers = useRef<Record<number, any>>({});
   const googleHospitalMarker = useRef<any>(null);
   const googleInfoWindow = useRef<any>(null);
+
+  const showGoogleInfoWindow = (donor: Donor, marker: any) => {
+    if (!googleInfoWindow.current || !googleMapInst.current) return;
+    googleInfoWindow.current.setContent(`
+      <div style="font-family: 'DM Sans', sans-serif;">
+        <h4 style="margin: 0 0 6px 0; color: #fff; font-size: 14px; font-weight: 600;">${donor.name}</h4>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #aaa;">Blood Group: <strong style="color: #FF3B3B;">${donor.blood}</strong></p>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: #aaa;">Distance: ${donor.distance} km (${donor.time})</p>
+        <p style="margin: 0; font-size: 11px; color: ${donor.available ? "#00C853" : "#FF3B3B"}; font-weight: 700;">
+          ● ${donor.available ? "AVAILABLE" : "UNAVAILABLE"}
+        </p>
+      </div>
+    `);
+    googleInfoWindow.current.open(googleMapInst.current, marker);
+  };
+
+  const getPopupContent = (donor: Donor) => {
+    return `
+      <div style="padding: 2px;">
+        <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #fff;">${donor.name}</h4>
+        <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
+          Blood Type: <span style="color: #FF3B3B; font-weight:700;">${donor.blood}</span> · Age ${donor.age}<br/>
+          📍 ${donor.distance} km (${donor.time})
+        </div>
+        <div style="font-size: 10px; font-weight: 700; color: ${donor.available ? "#00C853" : "#FF3B3B"}; text-transform: uppercase;">
+          ${donor.available ? "✓ Available to Donate" : "✗ Unavailable"}
+        </div>
+      </div>
+    `;
+  };
 
   // Inject Map Pin Animations & Leaflet overrides once
   useEffect(() => {
@@ -251,6 +282,7 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
       }
 
       const map = googleMapInst.current;
+      map.setCenter({ lat: center[0], lng: center[1] });
 
       // Update Hospital Marker
       if (googleHospitalMarker.current) {
@@ -325,6 +357,7 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
       }
 
       const map = leafletMapInst.current;
+      map.setView(center, map.getZoom());
 
       // Update Hospital Marker
       if (leafletHospitalMarker.current) {
@@ -361,7 +394,7 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
         leafletMarkers.current[donor.id] = marker;
       });
     }
-  }, [provider, googleReady, donors, center]);
+  }, [provider, googleReady, donors, center, onSelectDonor]);
 
   // Handle selectedDonorId changes to pan and zoom
   useEffect(() => {
@@ -388,35 +421,7 @@ export default function DonorMap({ donors, center, selectedDonorId, onSelectDono
     }
   }, [selectedDonorId, donors, provider]);
 
-  const showGoogleInfoWindow = (donor: Donor, marker: any) => {
-    if (!googleInfoWindow.current || !googleMapInst.current) return;
-    googleInfoWindow.current.setContent(`
-      <div style="font-family: 'DM Sans', sans-serif;">
-        <h4 style="margin: 0 0 6px 0; color: #fff; font-size: 14px; font-weight: 600;">${donor.name}</h4>
-        <p style="margin: 0 0 4px 0; font-size: 12px; color: #aaa;">Blood Group: <strong style="color: #FF3B3B;">${donor.blood}</strong></p>
-        <p style="margin: 0 0 4px 0; font-size: 12px; color: #aaa;">Distance: ${donor.distance} km (${donor.time})</p>
-        <p style="margin: 0; font-size: 11px; color: ${donor.available ? "#00C853" : "#FF3B3B"}; font-weight: 700;">
-          ● ${donor.available ? "AVAILABLE" : "UNAVAILABLE"}
-        </p>
-      </div>
-    `);
-    googleInfoWindow.current.open(googleMapInst.current, marker);
-  };
 
-  const getPopupContent = (donor: Donor) => {
-    return `
-      <div style="padding: 2px;">
-        <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #fff;">${donor.name}</h4>
-        <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
-          Blood Type: <span style="color: #FF3B3B; font-weight:700;">${donor.blood}</span> · Age ${donor.age}<br/>
-          📍 ${donor.distance} km (${donor.time})
-        </div>
-        <div style="font-size: 10px; font-weight: 700; color: ${donor.available ? "#00C853" : "#FF3B3B"}; text-transform: uppercase;">
-          ${donor.available ? "✓ Available to Donate" : "✗ Unavailable"}
-        </div>
-      </div>
-    `;
-  };
 
   const handleSaveSettings = () => {
     localStorage.setItem("lifelink_map_provider", provider);
