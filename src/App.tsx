@@ -323,7 +323,7 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
 };
 
 // DONOR DASHBOARD
-const DonorDashboard = () => {
+const DonorDashboard = ({ userRole }: { userRole: string | null }) => {
   const [activeReq, setActiveReq] = useState<typeof MOCK_REQUESTS[0] | null>(null);
 
   return (
@@ -362,8 +362,9 @@ const DonorDashboard = () => {
           {MOCK_REQUESTS.map(r => (
             <div
               key={r.id}
-              onClick={() => setActiveReq(r)}
+              onClick={() => userRole === "admin" && setActiveReq(r)}
               className={`request-card ${r.urgency === "Critical" ? "request-card-critical" : r.urgency === "Urgent" ? "request-card-urgent" : ""}`}
+              style={{ cursor: userRole === "admin" ? "pointer" : "default" }}
             >
               <div className="request-card-header">
                 <div>
@@ -376,7 +377,7 @@ const DonorDashboard = () => {
                 </div>
                 <span className="request-card-time">{r.time}</span>
               </div>
-              {r.urgency === "Critical" && (
+              {r.urgency === "Critical" && userRole === "admin" && (
                 <button className="respond-now-btn">RESPOND NOW</button>
               )}
             </div>
@@ -989,7 +990,7 @@ export default function App() {
 
       {/* Scrollable content */}
       <div className="app-content">
-        {screen === "donor"    && <DonorDashboard/>}
+        {screen === "donor"    && <DonorDashboard userRole={userRole}/>}
         {screen === "search"   && <RecipientDashboard/>}
         {screen === "compat"   && <CompatibilityView/>}
         {screen === "admin"    && userRole === "admin" && <AdminDashboard/>}

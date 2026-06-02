@@ -19,7 +19,7 @@ The prototype is built with a clean separation of concerns, hosting component ma
 2. **🤲 Donor Dashboard ([DonorDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L259))**:
    - Displays donor statistics (Donations, Lives Saved, Days Since Last Donation).
    - Provides live eligibility indicators with visual pulse rings.
-   - Shows local emergency requests and triggers an interactive **Confirm Donation Response Modal** to register commitments.
+   - Shows local emergency requests; responding to requests (via "RESPOND NOW" buttons and confirmation modals) is restricted to authenticated Admin users.
 3. **🏥 Recipient Dashboard ([RecipientDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L355))**:
    - Includes a **City/Location Selector** supporting major cities (Bengaluru, Mumbai, Delhi, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad) which auto-filters donors and centers the map dynamically.
    - Interactive proximity search displaying matching compatible donors sorted by distance.
