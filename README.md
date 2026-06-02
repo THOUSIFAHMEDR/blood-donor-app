@@ -13,6 +13,7 @@ The prototype is built with a clean separation of concerns, hosting component ma
 1. **🔐 Multi-Role Authentication Screen ([AuthScreen](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L126))**:
    - Supports role selection (Donor, Recipient, and Admin) and seamless **Logout** redirection.
    - Features a styled OTP entry verification interface.
+   - **Role-Based Access Control (RBAC)**: Enforces access restrictions. Non-admin users (`donor` and `recipient`) cannot see or access the Admin control panel; the Admin tab is hidden from the navigation bar and protected via rendering guards.
 2. **🤲 Donor Dashboard ([DonorDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L259))**:
    - Displays donor statistics (Donations, Lives Saved, Days Since Last Donation).
    - Provides live eligibility indicators with visual pulse rings.
@@ -28,7 +29,7 @@ The prototype is built with a clean separation of concerns, hosting component ma
 5. **⚙️ Admin Control Panel ([AdminDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L717))**:
    - Provides macro stats: Total Donors, Registered Recipients, Open Emergency Requests, Available Units.
    - Displays a live blood type inventory tracker with colored depletion indicator bars.
-   - Handles a mock approval interface for pending donor/recipient accounts.
+   - **Interactive Pending Approvals**: Tracks registration approvals inside a stateful component. Approving (✓) or rejecting (✗) triggers an custom alert message containing the applicant's name and updates the list in real-time.
 6. **🩸 Compatibility Engine ([CompatibilityView](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L808))**:
    - Interactive matrix mapping who can donate to and receive from specific blood types (highlighting universal donor/recipient configurations).
 
@@ -39,6 +40,9 @@ The prototype is built with a clean separation of concerns, hosting component ma
 To run the React + TypeScript + Vite project locally, make sure you have [Node.js](https://nodejs.org/) installed:
 
 ```bash
+# Navigate to the app directory
+cd my-app
+
 # Install dependencies
 npm install
 

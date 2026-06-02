@@ -271,7 +271,7 @@ const DonorDashboard = () => {
         <div className="dashboard-hero-title-area">
           <div>
             <p className="dashboard-hero-subtitle" style={{ color:"#FF3B3B" }}>DONOR DASHBOARD</p>
-            <h2 className="dashboard-hero-title">Welcome, Thousif 👋</h2>
+            <h2 className="dashboard-hero-title">Welcome,👋</h2>
           </div>
           <BloodBadge group="O+" size="lg" />
         </div>
@@ -729,77 +729,95 @@ const RegisterDonor = ({ onBack }: { onBack: () => void }) => {
 };
 
 // ADMIN DASHBOARD
-const AdminDashboard = () => (
-  <div style={{ padding:"0 0 40px" }} className="section-container">
-    <div className="dashboard-hero dashboard-hero-admin">
-      <p className="dashboard-hero-subtitle" style={{ color:"#00C853" }}>ADMIN CONTROL CENTER</p>
-      <h2 className="dashboard-hero-title">Blood Bank Admin</h2>
-    </div>
+const AdminDashboard = () => {
+  const [approvals, setApprovals] = useState([
+    { name: "Rahul Verma", role: "Donor", blood: "B+" as BloodGroup, time: "2 min ago" },
+    { name: "Meena Iyer", role: "Recipient", blood: "O-" as BloodGroup, time: "15 min ago" },
+    { name: "Aditya Das", role: "Donor", blood: "A+" as BloodGroup, time: "1 hr ago" },
+  ]);
 
-    <div style={{ padding:"0 24px" }}>
-      <div className="stats-grid stats-grid-admin">
-        <StatCard label="Total Donors" value="1,284" icon="🤲" accent="#00C853"/>
-        <StatCard label="Recipients" value="467" icon="🏥" accent="#29B6F6"/>
-        <StatCard label="Emergency Req" value="12" icon="🚨" accent="#FF1744"/>
-        <StatCard label="Units Available" value="843" icon="🩸" accent="#FF3B3B"/>
+  const handleApprove = (name: string) => {
+    alert(`${name}'s registration has been approved.`);
+    setApprovals(prev => prev.filter(u => u.name !== name));
+  };
+
+  const handleReject = (name: string) => {
+    alert(`${name}'s registration has been rejected.`);
+    setApprovals(prev => prev.filter(u => u.name !== name));
+  };
+
+  return (
+    <div style={{ padding:"0 0 40px" }} className="section-container">
+      <div className="dashboard-hero dashboard-hero-admin">
+        <p className="dashboard-hero-subtitle" style={{ color:"#00C853" }}>ADMIN CONTROL CENTER</p>
+        <h2 className="dashboard-hero-title">Blood Bank Admin</h2>
       </div>
 
-      {/* Blood inventory */}
-      <h3 className="section-title" style={{ margin:"0 0 14px" }}>Blood Inventory</h3>
-      <div className="admin-inventory-card">
-        {[
-          { group:"O+", units:210, max:300 },
-          { group:"O-", units:45, max:100 },
-          { group:"A+", units:180, max:250 },
-          { group:"A-", units:30, max:80 },
-          { group:"B+", units:160, max:200 },
-          { group:"B-", units:25, max:60 },
-          { group:"AB+", units:100, max:120 },
-          { group:"AB-", units:93, max:80 },
-        ].map(item => {
-          const pct = Math.min(100, Math.round(item.units/item.max*100));
-          const color = pct<30?"#FF1744":pct<60?"#FF6D00":"#00C853";
-          return (
-            <div key={item.group} className="admin-inventory-item">
-              <div className="admin-inventory-header">
-                <BloodBadge group={item.group as BloodGroup}/>
-                <span className="admin-inventory-units">{item.units} / {item.max} units</span>
-              </div>
-              <div className="admin-progress-bg">
-                <div className="admin-progress-fill" style={{ width:`${pct}%`, background:color }}/>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Pending approvals */}
-      <h3 className="section-title" style={{ margin:"0 0 14px" }}>Pending Approvals</h3>
-      {[
-        { name:"Rahul Verma", role:"Donor", blood:"B+", time:"2 min ago" },
-        { name:"Meena Iyer", role:"Recipient", blood:"O-", time:"15 min ago" },
-        { name:"Aditya Das", role:"Donor", blood:"A+", time:"1 hr ago" },
-      ].map((u,i) => (
-        <div key={i} className="approval-card">
-          <div className="approval-card-left">
-            <div className="approval-avatar">👤</div>
-            <div className="approval-details">
-              <p className="approval-name">{u.name}</p>
-              <div className="approval-meta">
-                <span className="approval-role">{u.role}</span>
-                <BloodBadge group={u.blood as BloodGroup}/>
-              </div>
-            </div>
-          </div>
-          <div className="approval-actions">
-            <button className="approval-btn-approve">✓</button>
-            <button className="approval-btn-reject">✗</button>
-          </div>
+      <div style={{ padding:"0 24px" }}>
+        <div className="stats-grid stats-grid-admin">
+          <StatCard label="Total Donors" value="1,284" icon="🤲" accent="#00C853"/>
+          <StatCard label="Recipients" value="467" icon="🏥" accent="#29B6F6"/>
+          <StatCard label="Emergency Req" value="12" icon="🚨" accent="#FF1744"/>
+          <StatCard label="Units Available" value="843" icon="🩸" accent="#FF3B3B"/>
         </div>
-      ))}
+
+        {/* Blood inventory */}
+        <h3 className="section-title" style={{ margin:"0 0 14px" }}>Blood Inventory</h3>
+        <div className="admin-inventory-card">
+          {[
+            { group:"O+", units:210, max:300 },
+            { group:"O-", units:45, max:100 },
+            { group:"A+", units:180, max:250 },
+            { group:"A-", units:30, max:80 },
+            { group:"B+", units:160, max:200 },
+            { group:"B-", units:25, max:60 },
+            { group:"AB+", units:100, max:120 },
+            { group:"AB-", units:93, max:80 },
+          ].map(item => {
+            const pct = Math.min(100, Math.round(item.units/item.max*100));
+            const color = pct<30?"#FF1744":pct<60?"#FF6D00":"#00C853";
+            return (
+              <div key={item.group} className="admin-inventory-item">
+                <div className="admin-inventory-header">
+                  <BloodBadge group={item.group as BloodGroup}/>
+                  <span className="admin-inventory-units">{item.units} / {item.max} units</span>
+                </div>
+                <div className="admin-progress-bg">
+                  <div className="admin-progress-fill" style={{ width:`${pct}%`, background:color }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pending approvals */}
+        <h3 className="section-title" style={{ margin:"0 0 14px" }}>Pending Approvals</h3>
+        {approvals.length === 0 ? (
+          <p style={{ color: "#888", fontStyle: "italic", fontSize: 14 }}>No pending approvals.</p>
+        ) : (
+          approvals.map((u) => (
+            <div key={u.name} className="approval-card">
+              <div className="approval-card-left">
+                <div className="approval-avatar">👤</div>
+                <div className="approval-details">
+                  <p className="approval-name">{u.name}</p>
+                  <div className="approval-meta">
+                    <span className="approval-role">{u.role}</span>
+                    <BloodBadge group={u.blood}/>
+                  </div>
+                </div>
+              </div>
+              <div className="approval-actions">
+                <button className="approval-btn-approve" onClick={() => handleApprove(u.name)}>✓</button>
+                <button className="approval-btn-reject" onClick={() => handleReject(u.name)}>✗</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // COMPATIBILITY ENGINE VIEW
 const CompatibilityView = () => {
@@ -865,8 +883,13 @@ const NAV = [
 export default function App() {
   const [authed, setAuthed] = useState(false);
   const [screen, setScreen] = useState("donor");
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const handleLogin = (r: string) => { setAuthed(true); setScreen(r==="admin"?"admin":r==="recipient"?"search":"donor"); };
+  const handleLogin = (r: string) => {
+    setAuthed(true);
+    setUserRole(r);
+    setScreen(r === "admin" ? "admin" : r === "recipient" ? "search" : "donor");
+  };
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -897,7 +920,7 @@ export default function App() {
           <span style={{ fontSize: 20 }}>🩸</span>
           <span className="app-header-title">LifeLink</span>
         </div>
-        <button onClick={() => { setAuthed(false); setScreen("donor"); }} className="app-header-logout">
+        <button onClick={() => { setAuthed(false); setUserRole(null); setScreen("donor"); }} className="app-header-logout">
           LOGOUT
         </button>
       </div>
@@ -907,13 +930,13 @@ export default function App() {
         {screen === "donor"    && <DonorDashboard/>}
         {screen === "search"   && <RecipientDashboard/>}
         {screen === "compat"   && <CompatibilityView/>}
-        {screen === "admin"    && <AdminDashboard/>}
+        {screen === "admin"    && userRole === "admin" && <AdminDashboard/>}
         {screen === "register" && <RegisterDonor onBack={() => setScreen("donor")}/>}
       </div>
 
       {/* Bottom nav */}
       <div className="bottom-nav">
-        {NAV.map(n => (
+        {NAV.filter(n => n.id !== "admin" || userRole === "admin").map(n => (
           <button key={n.id} onClick={() => setScreen(n.id)} className="nav-btn" style={{ opacity: screen===n.id ? 1 : 0.4 }}>
             <span className="nav-btn-icon">{n.icon}</span>
             <span
