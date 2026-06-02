@@ -149,6 +149,9 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
   const [form, setForm] = useState({ name:"", email:"", password:"", phone:"" });
   const [step, setStep] = useState(1); // 1=form 2=otp
   const [otp, setOtp] = useState(["","","","","",""]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
   const refs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -165,8 +168,15 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
   };
 
   const handleLogin = () => {
-    if (tab === "register" && step === 1) { setStep(2); return; }
-    onLogin(role);
+    if (tab === "register" && step === 1) {
+      setStep(2);
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      onLogin(role);
+    }, 800);
   };
 
   return (
@@ -199,35 +209,83 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
           </div>
 
           {step === 1 ? (<>
-            {/* Role selector */}
-            <div style={{ marginBottom:20, textAlign:"left" }}>
-              <label className="auth-role-label">SELECT ROLE</label>
-              <div className="auth-role-group">
-                {[["donor","🤲 Donor"],["recipient","🏥 Recipient"],["admin","⚙️ Admin"]].map(([r,l]) => (
-                  <button
-                    key={r}
-                    onClick={() => setRole(r)}
-                    className={`auth-role-btn ${role === r ? "auth-role-btn-active" : ""}`}
+            {/* Role Selector Grid */}
+            <div className="auth-role-section">
+              <label className="auth-role-label">SELECT SYSTEM PORTAL</label>
+              <div className="auth-role-tiles">
+                {[
+                  { id: "donor", title: "Donor Portal", desc: "Donate blood, check local request urgencies", icon: "🤲" },
+                  { id: "recipient", title: "Recipient Portal", desc: "Search matching blood banks & hospitals", icon: "🏥" },
+                  { id: "admin", title: "Admin Center", desc: "Monitor stock balances & approvals", icon: "⚙️" },
+                ].map(tile => (
+                  <div
+                    key={tile.id}
+                    onClick={() => setRole(tile.id)}
+                    className={`role-tile ${role === tile.id ? "role-tile-active" : ""}`}
                   >
-                    {l}
-                  </button>
+                    <span className="role-tile-icon">{tile.icon}</span>
+                    <div className="role-tile-content">
+                      <h4 className="role-tile-title">{tile.title}</h4>
+                      <p className="role-tile-desc">{tile.desc}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {tab==="register" && (
-              <input placeholder="Full Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}
-                className="auth-form-input" />
+            {tab === "register" && (
+              <div className="auth-input-wrapper">
+                <span className="auth-input-icon">👤</span>
+                <input
+                  placeholder="Full Name"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="auth-form-input"
+                />
+              </div>
             )}
-            <input placeholder="Email Address" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}
-              className="auth-form-input" />
-            <input type="password" placeholder="Password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}
-              className="auth-form-input" />
-            {tab==="register" && (
-              <input placeholder="Phone Number" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}
-                className="auth-form-input" style={{ marginBottom: 0 }} />
+            
+            <div className="auth-input-wrapper">
+              <span className="auth-input-icon">✉️</span>
+              <input
+                placeholder="Email Address"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                className="auth-form-input"
+              />
+            </div>
+
+            <div className="auth-input-wrapper">
+              <span className="auth-input-icon">🔒</span>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                className="auth-form-input auth-password-input"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                className="auth-password-toggle"
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+
+            {tab === "register" && (
+              <div className="auth-input-wrapper" style={{ marginBottom: 0 }}>
+                <span className="auth-input-icon">📞</span>
+                <input
+                  placeholder="Phone Number"
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  className="auth-form-input"
+                />
+              </div>
             )}
-            {tab==="login" && (
+            
+            {tab === "login" && (
               <div className="auth-forgot-pwd">
                 <span className="auth-forgot-link">Forgot Password?</span>
               </div>
@@ -247,8 +305,12 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
             </div>
           )}
 
-          <button onClick={handleLogin} className="auth-submit-btn">
-            {tab==="register" && step===1 ? "SEND OTP" : tab==="register" ? "CREATE ACCOUNT" : "SIGN IN"}
+          <button onClick={handleLogin} disabled={loading} className={`auth-submit-btn ${loading ? "btn-loading" : ""}`}>
+            {loading ? (
+              <span className="btn-spinner" />
+            ) : (
+              tab === "register" && step === 1 ? "SEND OTP" : tab === "register" ? "CREATE ACCOUNT" : "SIGN IN"
+            )}
           </button>
         </div>
 

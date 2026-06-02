@@ -11,8 +11,10 @@ This project is built using **React 19**, **TypeScript**, and **Vite**, featurin
 The prototype is built with a clean separation of concerns, hosting component markup and logic in [App.tsx](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx) and all layout and design styling consolidated in [App.css](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.css). Key modules include:
 
 1. **🔐 Multi-Role Authentication Screen ([AuthScreen](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L126))**:
-   - Supports role selection (Donor, Recipient, and Admin) and seamless **Logout** redirection.
+   - Supports portal selection (Donor, Recipient, and Admin) via interactive description tiles and seamless **Logout** redirection.
    - Features a styled OTP entry verification interface.
+   - Inputs are wrapped with prefix icons (✉️, 🔒, 👤, 📞) and a show/hide password visibility toggle (👁️ / 🙈).
+   - Sign-in buttons feature a micro-spinner animation and simulated authentication delay to provide dynamic user feedback.
    - **Role-Based Access Control (RBAC)**: Enforces access restrictions. Non-admin users (`donor` and `recipient`) cannot see or access the Admin control panel; the Admin tab is hidden from the navigation bar and protected via rendering guards.
 2. **🤲 Donor Dashboard ([DonorDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L259))**:
    - Displays donor statistics (Donations, Lives Saved, Days Since Last Donation).
