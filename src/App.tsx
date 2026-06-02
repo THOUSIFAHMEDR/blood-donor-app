@@ -446,7 +446,7 @@ const DonorDashboard = () => {
               </button>
               <button
                 onClick={() => {
-                  alert(`Thank you Thousif! Your response for ${activeReq.patient} has been registered. The hospital will contact you shortly.`);
+                  alert(`Thank you Admin! Your response for ${activeReq.patient} has been registered. The hospital will contact you shortly.`);
                   setActiveReq(null);
                 }}
                 className="modal-btn-confirm modal-btn-confirm-donor"
