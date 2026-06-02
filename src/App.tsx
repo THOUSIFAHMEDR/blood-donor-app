@@ -61,16 +61,16 @@ const MOCK_DONORS: Array<Donor> = [
   { id:6, name:"Lakshmi Devi", blood:"O+", city:"Bengaluru", distance:5.0, time:"17 min", available:true, lastDonated:"2025-02-01", gender:"female", age:28, lat:12.9320, lng:77.6120 },
 ];
 
-const getCityDonors = (cityName: string): Donor[] => {
+const getCityDonors = (cityName: string, donorList: Donor[]): Donor[] => {
   const [lat, lng] = CITY_COORDS[cityName] || [12.9716, 77.5946];
-  return MOCK_DONORS.map((d, index) => {
+  const cityDonors = donorList.filter(d => d.city === cityName);
+  return cityDonors.map((d, index) => {
     const latOffset = ((index % 3) - 1) * 0.015 + 0.005;
     const lngOffset = (((index + 1) % 3) - 1) * 0.015 - 0.005;
     return {
       ...d,
-      city: cityName,
-      lat: lat + latOffset,
-      lng: lng + lngOffset,
+      lat: d.lat || (lat + latOffset),
+      lng: d.lng || (lng + lngOffset),
     };
   });
 };
@@ -88,6 +88,45 @@ const MOCK_REQUESTS: Array<{
   { id:1, patient:"Rahul Mehta", blood:"O+", hospital:"Manipal Hospital", units:2, urgency:"Critical", time:"12 min ago", city:"Bengaluru" },
   { id:2, patient:"Anita Roy", blood:"A-", hospital:"Fortis Hospital", units:1, urgency:"Urgent", time:"45 min ago", city:"Bengaluru" },
   { id:3, patient:"Suresh Kumar", blood:"B+", hospital:"Apollo Hospital", units:3, urgency:"Normal", time:"2 hrs ago", city:"Bengaluru" },
+];
+
+const DEFAULT_USERS = [
+  {
+    name: "Admin Center",
+    email: "admin@lifelink.com",
+    password: "admin123",
+    phone: "9876543210",
+    role: "admin",
+    eligible: false,
+    donations: []
+  },
+  {
+    name: "Arjun Sharma",
+    email: "donor@lifelink.com",
+    password: "donor123",
+    phone: "9876543211",
+    role: "donor",
+    blood: "O+" as const,
+    city: "Bengaluru",
+    age: 26,
+    gender: "male" as const,
+    weight: 75,
+    eligible: true,
+    donations: [
+      { date: "Mar 5, 2025", hospital: "Manipal Hospital", units: 1, badge: "Verified" },
+      { date: "Nov 15, 2024", hospital: "Apollo BGS", units: 1, badge: "Verified" },
+      { date: "Jul 2, 2024", hospital: "Fortis Hospital", units: 1, badge: "Verified" }
+    ]
+  },
+  {
+    name: "Rahul Mehta",
+    email: "recipient@lifelink.com",
+    password: "recipient123",
+    phone: "9876543212",
+    role: "recipient",
+    eligible: false,
+    donations: []
+  }
 ];
 
 export type BloodGroup = "O-" | "O+" | "A-" | "A+" | "B-" | "B+" | "AB-" | "AB+";
@@ -143,7 +182,15 @@ const StatCard = ({ label, value, icon, accent }: { label: string; value: string
 // ─── SCREENS ──────────────────────────────────────────────────────────────────
 
 // AUTH SCREEN
-const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
+const AuthScreen = ({
+  users,
+  onRegister,
+  onLogin,
+}: {
+  users: Array<any>;
+  onRegister: (newUser: any) => void;
+  onLogin: (user: any) => void;
+}) => {
   const [tab, setTab] = useState("login");
   const [role, setRole] = useState("donor");
   const [form, setForm] = useState({ name:"", email:"", password:"", phone:"" });
@@ -151,6 +198,9 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
   const [otp, setOtp] = useState(["","","","","",""]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [smsToast, setSmsToast] = useState<{ message: string; visible: boolean }>({ message: "", visible: false });
+  const [error, setError] = useState("");
   
   const refs = [
     useRef<HTMLInputElement>(null),
@@ -167,16 +217,94 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
     if (val && i < 5) refs[i+1].current?.focus();
   };
 
-  const handleLogin = () => {
-    if (tab === "register" && step === 1) {
-      setStep(2);
-      return;
+  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[i] && i > 0) {
+      refs[i-1].current?.focus();
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onLogin(role);
-    }, 800);
+  };
+
+  const handleLogin = () => {
+    setError("");
+    
+    if (tab === "register") {
+      if (step === 1) {
+        if (!form.name.trim()) { setError("Full Name is required."); return; }
+        if (!form.email.trim()) { setError("Email Address is required."); return; }
+        if (!/\S+@\S+\.\S+/.test(form.email)) { setError("Invalid email address format."); return; }
+        if (!form.password || form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
+        if (!form.phone.trim()) { setError("Phone Number is required."); return; }
+        if (!/^\d{10}$/.test(form.phone.replace(/[\s-]/g, ""))) { setError("Please enter a valid 10-digit phone number."); return; }
+
+        const exists = users.find(u => u.email.toLowerCase() === form.email.toLowerCase());
+        if (exists) {
+          setError("An account with this email already exists.");
+          return;
+        }
+
+        setLoading(true);
+        setTimeout(() => {
+          setLoading(false);
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          setGeneratedOtp(code);
+          setSmsToast({
+            message: `🔑 LifeLink Security:\nYour verification code is ${code}. Enter this code to complete registration.`,
+            visible: true
+          });
+          setStep(2);
+        }, 600);
+      } else {
+        const enteredOtp = otp.join("");
+        if (enteredOtp.length < 6) {
+          setError("Please enter the 6-digit verification code.");
+          return;
+        }
+        if (enteredOtp !== generatedOtp) {
+          setError("Incorrect OTP code. Please check the code and try again.");
+          return;
+        }
+
+        setLoading(true);
+        setTimeout(() => {
+          setLoading(false);
+          const newUser = {
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            phone: form.phone,
+            role: role,
+            eligible: false,
+            donations: []
+          };
+          onRegister(newUser);
+        }, 800);
+      }
+    } else {
+      if (!form.email.trim()) { setError("Email Address is required."); return; }
+      if (!form.password) { setError("Password is required."); return; }
+
+      const user = users.find(
+        u => u.email.toLowerCase() === form.email.toLowerCase()
+      );
+
+      if (!user) {
+        setError("No account found with this email.");
+        return;
+      }
+      if (user.password !== form.password) {
+        setError("Incorrect password.");
+        return;
+      }
+      if (user.role !== role) {
+        setError(`This account is registered for the ${user.role} portal. Please select the correct portal tiles above.`);
+        return;
+      }
+
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        onLogin(user);
+      }, 800);
+    }
   };
 
   return (
@@ -184,6 +312,20 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
       {/* BG blobs */}
       <div className="auth-blob-1" />
       <div className="auth-blob-2" />
+
+      {/* Floating SMS Toast Overlay */}
+      {smsToast.visible && (
+        <div className="sms-toast-overlay" onClick={() => setSmsToast(p => ({ ...p, visible: false }))}>
+          <div className="sms-toast-card">
+            <div className="sms-toast-header">
+              <span className="sms-toast-icon">💬</span>
+              <span className="sms-toast-title">MESSAGES · NOW</span>
+            </div>
+            <p className="sms-toast-body">{smsToast.message}</p>
+            <div className="sms-toast-dismiss">Tap to dismiss</div>
+          </div>
+        </div>
+      )}
       
       <div className="auth-wrapper">
         {/* Logo */}
@@ -200,13 +342,33 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
             {["login","register"].map(t => (
               <button
                 key={t}
-                onClick={() => { setTab(t); setStep(1); }}
+                onClick={() => { setTab(t); setStep(1); setError(""); }}
                 className={`auth-tab-btn ${tab === t ? "auth-tab-btn-active" : ""}`}
               >
                 {t}
               </button>
             ))}
           </div>
+
+          {/* Error Alert Display */}
+          {error && (
+            <div style={{
+              background: "rgba(255, 23, 68, 0.1)",
+              border: "1px solid rgba(255, 23, 68, 0.2)",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              color: "#FF1744",
+              fontSize: "12px",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontFamily: "'DM Sans', sans-serif"
+            }}>
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
 
           {step === 1 ? (<>
             {/* Role Selector Grid */}
@@ -220,7 +382,7 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
                 ].map(tile => (
                   <div
                     key={tile.id}
-                    onClick={() => setRole(tile.id)}
+                    onClick={() => { setRole(tile.id); setError(""); }}
                     className={`role-tile ${role === tile.id ? "role-tile-active" : ""}`}
                   >
                     <span className="role-tile-icon">{tile.icon}</span>
@@ -287,21 +449,32 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
             
             {tab === "login" && (
               <div className="auth-forgot-pwd">
-                <span className="auth-forgot-link">Forgot Password?</span>
+                <span className="auth-forgot-link" onClick={() => alert("Please use the default credentials for testing:\n- Donor: donor@lifelink.com / donor123\n- Recipient: recipient@lifelink.com / recipient123\n- Admin: admin@lifelink.com / admin123")}>Forgot Password?</span>
               </div>
             )}
           </>) : (
             <div className="otp-container">
               <p className="otp-info">Enter OTP sent to <span style={{color:"#fff"}}>{form.phone || form.email}</span></p>
+              <p style={{ color: "#FF3B3B", fontSize: "11px", margin: "-16px 0 16px 0", fontFamily: "'DM Mono', monospace" }}>
+                For testing: check message at top or use <strong>{generatedOtp}</strong>
+              </p>
               <div className="otp-inputs">
                 {otp.map((d, i) => (
                   <input key={i} ref={refs[i]} maxLength={1} value={d}
                     onChange={e => handleOtp(i, e.target.value)}
+                    onKeyDown={e => handleKeyDown(i, e)}
                     className={`otp-input ${d ? "otp-input-filled" : ""}`}
                   />
                 ))}
               </div>
-              <p className="otp-resend">Didn't receive? <span className="otp-resend-link">Resend OTP</span></p>
+              <p className="otp-resend">Didn't receive? <span className="otp-resend-link" onClick={() => {
+                const code = Math.floor(100000 + Math.random() * 900000).toString();
+                setGeneratedOtp(code);
+                setSmsToast({
+                  message: `🔑 LifeLink Security:\nYour new verification code is ${code}. Enter this code to complete registration.`,
+                  visible: true
+                });
+              }}>Resend OTP</span></p>
             </div>
           )}
 
@@ -323,8 +496,24 @@ const AuthScreen = ({ onLogin }: { onLogin: (role: string) => void }) => {
 };
 
 // DONOR DASHBOARD
-const DonorDashboard = ({ userRole }: { userRole: string | null }) => {
-  const [activeReq, setActiveReq] = useState<typeof MOCK_REQUESTS[0] | null>(null);
+// DONOR DASHBOARD
+const DonorDashboard = ({ 
+  currentUser, 
+  requests, 
+  onRespond 
+}: { 
+  currentUser: any; 
+  requests: Array<any>; 
+  onRespond: (req: any) => void; 
+}) => {
+  const [activeReq, setActiveReq] = useState<any | null>(null);
+  
+  const donationCount = currentUser?.donations?.length || 0;
+  const livesSaved = donationCount * 3;
+  const eligible = currentUser?.eligible !== false;
+  
+  const userCity = currentUser?.city || "Bengaluru";
+  const cityRequests = requests.filter(r => r.city === userCity);
 
   return (
     <div style={{ padding:"0 0 40px" }} className="section-container">
@@ -333,73 +522,84 @@ const DonorDashboard = ({ userRole }: { userRole: string | null }) => {
         <div className="dashboard-hero-title-area">
           <div>
             <p className="dashboard-hero-subtitle" style={{ color:"#FF3B3B" }}>DONOR DASHBOARD</p>
-            <h2 className="dashboard-hero-title">Welcome,👋</h2>
+            <h2 className="dashboard-hero-title">Welcome, {currentUser?.name || "Donor"} 👋</h2>
           </div>
-          <BloodBadge group="O+" size="lg" />
+          <BloodBadge group={currentUser?.blood || "O+"} size="lg" />
         </div>
         {/* Eligibility bar */}
-        <div className="eligibility-banner">
-          <Pulse color="#00C853"/>
-          <span className="eligibility-status-label">ELIGIBLE TO DONATE</span>
-          <span className="eligibility-date">Next: Sep 15, 2025</span>
+        <div className="eligibility-banner" style={{ 
+          background: eligible ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 23, 68, 0.1)", 
+          borderColor: eligible ? "rgba(0, 200, 83, 0.2)" : "rgba(255, 23, 68, 0.2)" 
+        }}>
+          <Pulse color={eligible ? "#00C853" : "#FF1744"}/>
+          <span className="eligibility-status-label" style={{ color: eligible ? "#00C853" : "#FF1744" }}>
+            {eligible ? "ELIGIBLE TO DONATE" : "INELIGIBLE TO DONATE"}
+          </span>
+          <span className="eligibility-date" style={{ color: "#888" }}>
+            {eligible ? "Ready Now" : "Check health screening"}
+          </span>
         </div>
       </div>
 
       <div style={{ padding:"0 24px" }}>
         {/* Stats */}
         <div className="stats-grid">
-          <StatCard label="Donations" value="7" icon="💉" accent="#FF3B3B"/>
-          <StatCard label="Lives Saved" value="21" icon="❤️" accent="#C62A88"/>
-          <StatCard label="Days Since" value="64" icon="📅" accent="#FF6B35"/>
+          <StatCard label="Donations" value={donationCount} icon="💉" accent="#FF3B3B"/>
+          <StatCard label="Lives Saved" value={livesSaved} icon="❤️" accent="#C62A88"/>
+          <StatCard label="City portal" value={userCity} icon="📍" accent="#FF6B35"/>
         </div>
 
         {/* Emergency requests */}
         <div style={{ marginBottom:24 }}>
           <div className="section-title-row">
             <h3 className="section-title">Emergency Requests</h3>
-            <span className="section-label" style={{ color:"#FF3B3B" }}>NEAR YOU</span>
+            <span className="section-label" style={{ color:"#FF3B3B" }}>IN {userCity.toUpperCase()}</span>
           </div>
-          {MOCK_REQUESTS.map(r => (
-            <div
-              key={r.id}
-              onClick={() => userRole === "admin" && setActiveReq(r)}
-              className={`request-card ${r.urgency === "Critical" ? "request-card-critical" : r.urgency === "Urgent" ? "request-card-urgent" : ""}`}
-              style={{ cursor: userRole === "admin" ? "pointer" : "default" }}
-            >
-              <div className="request-card-header">
-                <div>
-                  <div className="request-card-badges">
-                    <BloodBadge group={r.blood}/>
-                    <UrgencyBadge level={r.urgency}/>
+          {cityRequests.length === 0 ? (
+            <p style={{ color: "#888", fontSize: 13, fontStyle: "italic" }}>No active emergency requests in your area.</p>
+          ) : (
+            cityRequests.map(r => (
+              <div
+                key={r.id}
+                onClick={() => eligible && setActiveReq(r)}
+                className={`request-card ${r.urgency === "Critical" ? "request-card-critical" : r.urgency === "Urgent" ? "request-card-urgent" : ""}`}
+                style={{ cursor: eligible ? "pointer" : "default" }}
+              >
+                <div className="request-card-header">
+                  <div>
+                    <div className="request-card-badges">
+                      <BloodBadge group={r.blood}/>
+                      <UrgencyBadge level={r.urgency}/>
+                    </div>
+                    <p className="request-card-patient">{r.patient}</p>
+                    <p className="request-card-details">{r.hospital} · {r.units} unit{r.units>1?"s":""}</p>
                   </div>
-                  <p className="request-card-patient">{r.patient}</p>
-                  <p className="request-card-details">{r.hospital} · {r.units} unit{r.units>1?"s":""}</p>
+                  <span className="request-card-time">{r.time}</span>
                 </div>
-                <span className="request-card-time">{r.time}</span>
+                {eligible && (
+                  <button className="respond-now-btn" style={{ marginTop: 12 }}>RESPOND NOW</button>
+                )}
               </div>
-              {r.urgency === "Critical" && userRole === "admin" && (
-                <button className="respond-now-btn">RESPOND NOW</button>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Donation history */}
         <div>
           <h3 className="section-title" style={{ margin:"0 0 14px" }}>Donation History</h3>
-          {[
-            { date:"Mar 5, 2025", hospital:"Manipal Hospital", units:1, badge:"Verified" },
-            { date:"Nov 15, 2024", hospital:"Apollo BGS", units:1, badge:"Verified" },
-            { date:"Jul 2, 2024", hospital:"Fortis Hospital", units:1, badge:"Verified" },
-          ].map((h,i) => (
-            <div key={i} className="history-item">
-              <div>
-                <p className="history-item-hospital">{h.hospital}</p>
-                <p className="history-item-date">{h.date}</p>
+          {currentUser?.donations && currentUser.donations.length > 0 ? (
+            currentUser.donations.map((h: any, i: number) => (
+              <div key={i} className="history-item">
+                <div>
+                  <p className="history-item-hospital">{h.hospital}</p>
+                  <p className="history-item-date">{h.date}</p>
+                </div>
+                <span className="history-item-status-badge">✓ {h.badge || "Verified"}</span>
               </div>
-              <span className="history-item-status-badge">✓ {h.badge}</span>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p style={{ color: "#888", fontSize: 13, fontStyle: "italic" }}>No donation history yet.</p>
+          )}
         </div>
       </div>
 
@@ -447,7 +647,8 @@ const DonorDashboard = ({ userRole }: { userRole: string | null }) => {
               </button>
               <button
                 onClick={() => {
-                  alert(`Thank you Admin! Your response for ${activeReq.patient} has been registered. The hospital will contact you shortly.`);
+                  alert(`Thank you! Your response for ${activeReq.patient} has been registered. The hospital will contact you shortly.`);
+                  onRespond(activeReq);
                   setActiveReq(null);
                 }}
                 className="modal-btn-confirm modal-btn-confirm-donor"
@@ -463,15 +664,23 @@ const DonorDashboard = ({ userRole }: { userRole: string | null }) => {
 };
 
 // RECIPIENT DASHBOARD
-const RecipientDashboard = () => {
+const RecipientDashboard = ({
+  currentUser,
+  donors,
+  onBroadcast
+}: {
+  currentUser: any;
+  donors: Array<Donor>;
+  onBroadcast: (newReq: any) => void;
+}) => {
   const [bloodNeeded, setBloodNeeded] = useState<BloodGroup>("O+");
   const [urgency, setUrgency] = useState<UrgencyLevel>("Urgent");
   const [searched, setSearched] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<number | null>(null);
-  const [city, setCity] = useState("Bengaluru");
+  const [city, setCity] = useState(currentUser?.city || "Bengaluru");
 
-  const compatible = getCityDonors(city)
+  const compatible = getCityDonors(city, donors)
     .filter(d => (RECEIVE_FROM[bloodNeeded] as BloodGroup[]).includes(d.blood))
     .sort((a,b)=>a.distance-b.distance);
 
@@ -574,7 +783,7 @@ const RecipientDashboard = () => {
               </div>
               {d.available && (
                 <div className="donor-action-buttons">
-                  <button onClick={(e) => { e.stopPropagation(); alert(`Calling ${d.name} at +91 XXXXX XXXXX...`); }} className="donor-action-call">
+                  <button onClick={(e) => { e.stopPropagation(); alert(`Calling ${d.name} at ${d.id > 10 ? currentUser?.phone || "+91 XXXXX XXXXX" : "+91 XXXXX XXXXX"}...`); }} className="donor-action-call">
                     📞 CALL
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); alert(`Request sent to ${d.name}!`); }} className="donor-action-request">
@@ -621,6 +830,17 @@ const RecipientDashboard = () => {
               </button>
               <button
                 onClick={() => {
+                  const newReq = {
+                    id: Date.now(),
+                    patient: currentUser?.name || "Recipient User",
+                    blood: bloodNeeded,
+                    hospital: "City General Hospital",
+                    units: Math.floor(Math.random() * 2) + 2,
+                    urgency: urgency,
+                    time: "Just now",
+                    city: city
+                  };
+                  onBroadcast(newReq);
                   alert(`Emergency broadcast sent successfully to ${compatible.length} compatible donors in ${city}!`);
                   setShowRequest(false);
                 }}
@@ -637,9 +857,25 @@ const RecipientDashboard = () => {
 };
 
 // REGISTRATION SCREEN
-const RegisterDonor = ({ onBack }: { onBack: () => void }) => {
+const RegisterDonor = ({ 
+  currentUser, 
+  onCompleteScreening, 
+  onBack 
+}: { 
+  currentUser: any; 
+  onCompleteScreening: (details: any) => void; 
+  onBack: () => void; 
+}) => {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ name:"", age:"", gender:"male" as "male"|"female"|"other", blood:"O+" as BloodGroup, city:"Bengaluru", weight:"", lastDonated:"" });
+  const [form, setForm] = useState(() => ({ 
+    name: currentUser?.name || "", 
+    age: currentUser?.age?.toString() || "", 
+    gender: (currentUser?.gender || "male") as "male"|"female"|"other", 
+    blood: (currentUser?.blood || "O+") as BloodGroup, 
+    city: currentUser?.city || "Bengaluru", 
+    weight: currentUser?.weight?.toString() || "", 
+    lastDonated: "" 
+  }));
   const [health, setHealth] = useState<Record<string, string>>({});
   const [eligible, setEligible] = useState<{ ok: boolean; reasons?: string[] } | null>(null);
 
@@ -688,6 +924,20 @@ const RegisterDonor = ({ onBack }: { onBack: () => void }) => {
 
       <div style={{ padding:"0 24px" }}>
         {step === 1 && (<>
+          {currentUser?.eligible && (
+            <div style={{
+              background: "rgba(0, 200, 83, 0.1)",
+              border: "1px solid rgba(0, 200, 83, 0.2)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              marginBottom: "16px",
+              fontSize: "13px",
+              color: "#00C853"
+            }}>
+              ⭐ You are currently registered as an eligible active donor. You can modify your screening details below if needed.
+            </div>
+          )}
+
           <div className="register-details-grid">
             <div className="register-details-grid-full">
               <input placeholder="Full Name" value={form.name} onChange={e=>f("name",e.target.value)} className="form-input"/>
@@ -778,7 +1028,19 @@ const RegisterDonor = ({ onBack }: { onBack: () => void }) => {
           </div>
 
           {eligible.ok && (
-            <button onClick={onBack} className="eligibility-btn eligibility-btn-ok">
+            <button 
+              onClick={() => {
+                onCompleteScreening({
+                  name: form.name,
+                  age: parseInt(form.age) || 25,
+                  gender: form.gender,
+                  blood: form.blood,
+                  city: form.city,
+                  weight: parseInt(form.weight) || 60
+                });
+              }} 
+              className="eligibility-btn eligibility-btn-ok"
+            >
               ✅ COMPLETE REGISTRATION
             </button>
           )}
@@ -792,23 +1054,23 @@ const RegisterDonor = ({ onBack }: { onBack: () => void }) => {
 };
 
 // ADMIN DASHBOARD
-const AdminDashboard = () => {
-  const [approvals, setApprovals] = useState([
-    { name: "Rahul Verma", role: "Donor", blood: "B+" as BloodGroup, time: "2 min ago" },
-    { name: "Meena Iyer", role: "Recipient", blood: "O-" as BloodGroup, time: "15 min ago" },
-    { name: "Aditya Das", role: "Donor", blood: "A+" as BloodGroup, time: "1 hr ago" },
-  ]);
-
-  const handleApprove = (name: string) => {
-    alert(`${name}'s registration has been approved.`);
-    setApprovals(prev => prev.filter(u => u.name !== name));
-  };
-
-  const handleReject = (name: string) => {
-    alert(`${name}'s registration has been rejected.`);
-    setApprovals(prev => prev.filter(u => u.name !== name));
-  };
-
+const AdminDashboard = ({
+  users,
+  donors,
+  requests,
+  approvals,
+  inventory,
+  onApprove,
+  onReject
+}: {
+  users: Array<any>;
+  donors: Array<Donor>;
+  requests: Array<any>;
+  approvals: Array<any>;
+  inventory: Record<BloodGroup, number>;
+  onApprove: (name: string) => void;
+  onReject: (name: string) => void;
+}) => {
   return (
     <div style={{ padding:"0 0 40px" }} className="section-container">
       <div className="dashboard-hero dashboard-hero-admin">
@@ -818,24 +1080,24 @@ const AdminDashboard = () => {
 
       <div style={{ padding:"0 24px" }}>
         <div className="stats-grid stats-grid-admin">
-          <StatCard label="Total Donors" value="1,284" icon="🤲" accent="#00C853"/>
-          <StatCard label="Recipients" value="467" icon="🏥" accent="#29B6F6"/>
-          <StatCard label="Emergency Req" value="12" icon="🚨" accent="#FF1744"/>
-          <StatCard label="Units Available" value="843" icon="🩸" accent="#FF3B3B"/>
+          <StatCard label="Total Donors" value={1284 + (donors.length - 6)} icon="🤲" accent="#00C853"/>
+          <StatCard label="Recipients" value={467 + (users.filter(u => u.role === "recipient").length - 1)} icon="🏥" accent="#29B6F6"/>
+          <StatCard label="Emergency Req" value={12 + (requests.length - 3)} icon="🚨" accent="#FF1744"/>
+          <StatCard label="Units Available" value={Object.values(inventory).reduce((a,b)=>a+b, 0)} icon="🩸" accent="#FF3B3B"/>
         </div>
 
         {/* Blood inventory */}
         <h3 className="section-title" style={{ margin:"0 0 14px" }}>Blood Inventory</h3>
         <div className="admin-inventory-card">
           {[
-            { group:"O+", units:210, max:300 },
-            { group:"O-", units:45, max:100 },
-            { group:"A+", units:180, max:250 },
-            { group:"A-", units:30, max:80 },
-            { group:"B+", units:160, max:200 },
-            { group:"B-", units:25, max:60 },
-            { group:"AB+", units:100, max:120 },
-            { group:"AB-", units:93, max:80 },
+            { group:"O+", units: inventory["O+"] || 0, max:300 },
+            { group:"O-", units: inventory["O-"] || 0, max:100 },
+            { group:"A+", units: inventory["A+"] || 0, max:250 },
+            { group:"A-", units: inventory["A-"] || 0, max:80 },
+            { group:"B+", units: inventory["B+"] || 0, max:200 },
+            { group:"B-", units: inventory["B-"] || 0, max:60 },
+            { group:"AB+", units: inventory["AB+"] || 0, max:120 },
+            { group:"AB-", units: inventory["AB-"] || 0, max:80 },
           ].map(item => {
             const pct = Math.min(100, Math.round(item.units/item.max*100));
             const color = pct<30?"#FF1744":pct<60?"#FF6D00":"#00C853";
@@ -871,8 +1133,8 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="approval-actions">
-                <button className="approval-btn-approve" onClick={() => handleApprove(u.name)}>✓</button>
-                <button className="approval-btn-reject" onClick={() => handleReject(u.name)}>✗</button>
+                <button className="approval-btn-approve" onClick={() => onApprove(u.name)}>✓</button>
+                <button className="approval-btn-reject" onClick={() => onReject(u.name)}>✗</button>
               </div>
             </div>
           ))
@@ -944,14 +1206,200 @@ const NAV = [
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [authed, setAuthed] = useState(false);
-  const [screen, setScreen] = useState("donor");
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [users, setUsers] = useState<Array<any>>(() => {
+    const saved = localStorage.getItem("lifelink_users");
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("lifelink_users", JSON.stringify(DEFAULT_USERS));
+    return DEFAULT_USERS;
+  });
 
-  const handleLogin = (r: string) => {
+  const [donors, setDonors] = useState<Array<Donor>>(() => {
+    const saved = localStorage.getItem("lifelink_donors");
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("lifelink_donors", JSON.stringify(MOCK_DONORS));
+    return MOCK_DONORS;
+  });
+
+  const [requests, setRequests] = useState<Array<any>>(() => {
+    const saved = localStorage.getItem("lifelink_requests");
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("lifelink_requests", JSON.stringify(MOCK_REQUESTS));
+    return MOCK_REQUESTS;
+  });
+
+  const [approvals, setApprovals] = useState<Array<any>>(() => {
+    const saved = localStorage.getItem("lifelink_approvals");
+    const defaultApprovals = [
+      { name: "Rahul Verma", role: "Donor", blood: "B+" as BloodGroup, time: "2 min ago" },
+      { name: "Meena Iyer", role: "Recipient", blood: "O-" as BloodGroup, time: "15 min ago" },
+      { name: "Aditya Das", role: "Donor", blood: "A+" as BloodGroup, time: "1 hr ago" },
+    ];
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("lifelink_approvals", JSON.stringify(defaultApprovals));
+    return defaultApprovals;
+  });
+
+  const [inventory, setInventory] = useState<Record<BloodGroup, number>>(() => {
+    const saved = localStorage.getItem("lifelink_inventory");
+    const defaultInventory = {
+      "O+": 210, "O-": 45, "A+": 180, "A-": 30,
+      "B+": 160, "B-": 25, "AB+": 100, "AB-": 93
+    };
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("lifelink_inventory", JSON.stringify(defaultInventory));
+    return defaultInventory as Record<BloodGroup, number>;
+  });
+
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    const saved = localStorage.getItem("lifelink_current_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [authed, setAuthed] = useState(() => {
+    return localStorage.getItem("lifelink_current_user") !== null;
+  });
+
+  const [userRole, setUserRole] = useState<string | null>(() => {
+    const saved = localStorage.getItem("lifelink_current_user");
+    return saved ? JSON.parse(saved).role : null;
+  });
+
+  const [screen, setScreen] = useState(() => {
+    const saved = localStorage.getItem("lifelink_current_user");
+    if (saved) {
+      const r = JSON.parse(saved).role;
+      return r === "admin" ? "admin" : r === "recipient" ? "search" : "donor";
+    }
+    return "donor";
+  });
+
+  const handleRegister = (newUser: any) => {
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem("lifelink_users", JSON.stringify(updatedUsers));
+    
+    setCurrentUser(newUser);
     setAuthed(true);
-    setUserRole(r);
-    setScreen(r === "admin" ? "admin" : r === "recipient" ? "search" : "donor");
+    setUserRole(newUser.role);
+    localStorage.setItem("lifelink_current_user", JSON.stringify(newUser));
+    setScreen(newUser.role === "admin" ? "admin" : newUser.role === "recipient" ? "search" : "donor");
+
+    if (newUser.role !== "admin") {
+      const newApproval = {
+        name: newUser.name,
+        role: newUser.role === "donor" ? "Donor" : "Recipient",
+        blood: "O+",
+        time: "Just now"
+      };
+      const updatedApprovals = [newApproval, ...approvals];
+      setApprovals(updatedApprovals);
+      localStorage.setItem("lifelink_approvals", JSON.stringify(updatedApprovals));
+    }
+  };
+
+  const handleLogin = (user: any) => {
+    setCurrentUser(user);
+    setAuthed(true);
+    setUserRole(user.role);
+    localStorage.setItem("lifelink_current_user", JSON.stringify(user));
+    setScreen(user.role === "admin" ? "admin" : user.role === "recipient" ? "search" : "donor");
+  };
+
+  const handleLogout = () => {
+    setAuthed(false);
+    setUserRole(null);
+    setCurrentUser(null);
+    localStorage.removeItem("lifelink_current_user");
+    setScreen("donor");
+  };
+
+  const updateCurrentUser = (updates: Partial<any>) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, ...updates };
+    setCurrentUser(updatedUser);
+    localStorage.setItem("lifelink_current_user", JSON.stringify(updatedUser));
+    
+    const updatedUsers = users.map(u => u.email.toLowerCase() === currentUser.email.toLowerCase() ? { ...u, ...updates } : u);
+    setUsers(updatedUsers);
+    localStorage.setItem("lifelink_users", JSON.stringify(updatedUsers));
+  };
+
+  const handleRespond = (req: any) => {
+    if (!currentUser) return;
+    
+    const newDonation = {
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      hospital: req.hospital,
+      units: req.units,
+      badge: "Pending Verification"
+    };
+    
+    const updatedDonations = [newDonation, ...(currentUser.donations || [])];
+    updateCurrentUser({
+      donations: updatedDonations
+    });
+
+    const updatedInventory = {
+      ...inventory,
+      [req.blood]: Math.min(300, (inventory[req.blood as BloodGroup] || 0) + req.units)
+    };
+    setInventory(updatedInventory);
+    localStorage.setItem("lifelink_inventory", JSON.stringify(updatedInventory));
+  };
+
+  const handleBroadcast = (newReq: any) => {
+    const updatedRequests = [newReq, ...requests];
+    setRequests(updatedRequests);
+    localStorage.setItem("lifelink_requests", JSON.stringify(updatedRequests));
+  };
+
+  const handleCompleteScreening = (details: any) => {
+    updateCurrentUser({
+      blood: details.blood,
+      city: details.city,
+      age: details.age,
+      gender: details.gender,
+      weight: details.weight,
+      eligible: true
+    });
+
+    const exists = donors.find(d => d.name === details.name);
+    if (!exists) {
+      const newDonor: Donor = {
+        id: Date.now(),
+        name: details.name,
+        blood: details.blood,
+        city: details.city,
+        distance: 1.2,
+        time: "4 min",
+        available: true,
+        lastDonated: "Never",
+        gender: details.gender,
+        age: details.age,
+        lat: 0,
+        lng: 0
+      };
+      const updatedDonors = [newDonor, ...donors];
+      setDonors(updatedDonors);
+      localStorage.setItem("lifelink_donors", JSON.stringify(updatedDonors));
+    }
+
+    alert("Donor screening registration completed successfully!");
+    setScreen("donor");
+  };
+
+  const handleApproveUser = (name: string) => {
+    alert(`${name}'s registration has been approved.`);
+    const updated = approvals.filter(u => u.name !== name);
+    setApprovals(updated);
+    localStorage.setItem("lifelink_approvals", JSON.stringify(updated));
+  };
+
+  const handleRejectUser = (name: string) => {
+    alert(`${name}'s registration has been rejected.`);
+    const updated = approvals.filter(u => u.name !== name);
+    setApprovals(updated);
+    localStorage.setItem("lifelink_approvals", JSON.stringify(updated));
   };
 
   useEffect(() => {
@@ -968,12 +1416,77 @@ export default function App() {
       ::-webkit-scrollbar { width:4px; }
       ::-webkit-scrollbar-track { background:transparent; }
       ::-webkit-scrollbar-thumb { background:#222; border-radius:2px; }
+
+      /* Floating SMS toast styling */
+      .sms-toast-overlay {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 380px;
+        z-index: 1000;
+        cursor: pointer;
+        animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes slideDown {
+        from { transform: translate(-50%, -40px); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+      }
+      .sms-toast-card {
+        background: rgba(20, 24, 30, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-left: 4px solid #FF3B3B;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+      }
+      .sms-toast-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        justify-content: flex-start;
+      }
+      .sms-toast-icon {
+        font-size: 16px;
+      }
+      .sms-toast-title {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: #888;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .sms-toast-body {
+        color: #fff;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.4;
+        white-space: pre-line;
+      }
+      .sms-toast-dismiss {
+        color: #555;
+        font-size: 9px;
+        text-align: right;
+        margin-top: 8px;
+        font-family: 'DM Mono', monospace;
+      }
     `;
     document.head.appendChild(style);
     return () => { document.head.removeChild(style); };
   }, []);
 
-  if (!authed) return <AuthScreen onLogin={handleLogin}/>;
+  if (!authed) {
+    return (
+      <AuthScreen 
+        users={users} 
+        onRegister={handleRegister} 
+        onLogin={handleLogin}
+      />
+    );
+  }
 
   return (
     <div className="app-container">
@@ -983,18 +1496,46 @@ export default function App() {
           <span style={{ fontSize: 20 }}>🩸</span>
           <span className="app-header-title">LifeLink</span>
         </div>
-        <button onClick={() => { setAuthed(false); setUserRole(null); setScreen("donor"); }} className="app-header-logout">
+        <button onClick={handleLogout} className="app-header-logout">
           LOGOUT
         </button>
       </div>
 
       {/* Scrollable content */}
       <div className="app-content">
-        {screen === "donor"    && <DonorDashboard userRole={userRole}/>}
-        {screen === "search"   && <RecipientDashboard/>}
+        {screen === "donor"    && (
+          <DonorDashboard 
+            currentUser={currentUser} 
+            requests={requests} 
+            onRespond={handleRespond}
+          />
+        )}
+        {screen === "search"   && (
+          <RecipientDashboard 
+            currentUser={currentUser} 
+            donors={donors} 
+            onBroadcast={handleBroadcast}
+          />
+        )}
         {screen === "compat"   && <CompatibilityView/>}
-        {screen === "admin"    && userRole === "admin" && <AdminDashboard/>}
-        {screen === "register" && <RegisterDonor onBack={() => setScreen("donor")}/>}
+        {screen === "admin"    && userRole === "admin" && (
+          <AdminDashboard 
+            users={users}
+            donors={donors}
+            requests={requests}
+            approvals={approvals}
+            inventory={inventory}
+            onApprove={handleApproveUser}
+            onReject={handleRejectUser}
+          />
+        )}
+        {screen === "register" && (
+          <RegisterDonor 
+            currentUser={currentUser} 
+            onCompleteScreening={handleCompleteScreening} 
+            onBack={() => setScreen("donor")}
+          />
+        )}
       </div>
 
       {/* Bottom nav */}

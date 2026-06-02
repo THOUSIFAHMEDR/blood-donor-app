@@ -10,28 +10,30 @@ This project is built using **React 19**, **TypeScript**, and **Vite**, featurin
 
 The prototype is built with a clean separation of concerns, hosting component markup and logic in [App.tsx](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx) and all layout and design styling consolidated in [App.css](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.css). Key modules include:
 
-1. **🔐 Multi-Role Authentication Screen ([AuthScreen](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L126))**:
+1. **🔐 Multi-Role Authentication & Mock Database ([AuthScreen](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L126))**:
    - Supports portal selection (Donor, Recipient, and Admin) via interactive description tiles and seamless **Logout** redirection.
-   - Features a styled OTP entry verification interface.
+   - **Simulated OTP Verification Flow**: Registering now triggers a dynamic 6-digit random code and fires a styled floating SMS notification card at the top of the viewport. Verification inputs enforce code correctness to complete signup.
+   - **Credential Verification**: Validates login email, password, and portal role credentials against the active database, providing real-time warning indicators on error.
+   - **Session Persistence**: Saves the logged-in session, restoring the user's name, history, and portal view automatically on browser reloads.
    - Inputs are wrapped with prefix icons (✉️, 🔒, 👤, 📞) and a show/hide password visibility toggle (👁️ / 🙈).
    - Sign-in buttons feature a micro-spinner animation and simulated authentication delay to provide dynamic user feedback.
    - **Role-Based Access Control (RBAC)**: Enforces access restrictions. Non-admin users (`donor` and `recipient`) cannot see or access the Admin control panel; the Admin tab is hidden from the navigation bar and protected via rendering guards.
 2. **🤲 Donor Dashboard ([DonorDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L259))**:
-   - Displays donor statistics (Donations, Lives Saved, Days Since Last Donation).
+   - Displays real-time donor statistics (Donations, Lives Saved) and city portal settings customized to the authenticated profile.
    - Provides live eligibility indicators with visual pulse rings.
-   - Shows local emergency requests; responding to requests (via "RESPOND NOW" buttons and confirmation modals) is restricted to authenticated Admin users.
+   - Shows active emergency requests in the donor's selected city; responding to requests now registers a verified response dynamically in their profile history and updates the global blood inventory.
 3. **🏥 Recipient Dashboard ([RecipientDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L355))**:
    - Includes a **City/Location Selector** supporting major cities (Bengaluru, Mumbai, Delhi, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad) which auto-filters donors and centers the map dynamically.
    - Interactive proximity search displaying matching compatible donors sorted by distance.
-   - Features a **Broadcast Emergency Request** system notifying matching donors.
+   - Features a **Broadcast Emergency Request** system that saves the broadcast request in the shared database, showing it immediately to nearby city donors.
 4. **📋 Donor Registration & Screening ([RegisterDonor](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L528))**:
-   - A multi-step flow capturing personal details, weight, and city.
+   - A multi-step flow capturing personal details, weight, and city (pre-filled with registered profile details).
    - An interactive 16-point medical screening checklist (evaluating chronic illnesses, recent surgeries, tattoos, etc.).
-   - Computes instant medical eligibility based on strict clinical guidelines.
+   - Computes instant medical eligibility; completing screening registers the profile as an active compatible donor, instantly showing them on the search maps.
 5. **⚙️ Admin Control Panel ([AdminDashboard](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L717))**:
    - Provides macro stats: Total Donors, Registered Recipients, Open Emergency Requests, Available Units.
    - Displays a live blood type inventory tracker with colored depletion indicator bars.
-   - **Interactive Pending Approvals**: Tracks registration approvals inside a stateful component. Approving (✓) or rejecting (✗) triggers an custom alert message containing the applicant's name and updates the list in real-time.
+   - **Interactive Pending Approvals**: Tracks registration approvals inside a stateful component. Approving (✓) or rejecting (✗) triggers a custom alert message containing the applicant's name and updates the list in real-time.
 6. **🩸 Compatibility Engine ([CompatibilityView](file:///f:/R%20Thousif%20Ahmed/Projects/Blood%20donor%20-%20prototype/my-app/src/App.tsx#L808))**:
    - Interactive matrix mapping who can donate to and receive from specific blood types (highlighting universal donor/recipient configurations).
 
@@ -52,10 +54,11 @@ npm install
 npm run dev
 ```
 
-Once running, navigate to `http://localhost:5173` in your browser. You can log in as any role:
-- **Donor**: Test the eligibility screen and view local requests.
-- **Recipient**: Search for O+ blood in Bengaluru to see proximity matches.
-- **Admin**: Monitor global inventory levels and review registrations.
+Once running, navigate to `http://localhost:5173` in your browser. You can test the platform using the following mock accounts (which persist credentials and history):
+- **Donor**: `donor@lifelink.com` / `donor123` (representing Arjun Sharma, O+)
+- **Recipient**: `recipient@lifelink.com` / `recipient123`
+- **Admin**: `admin@lifelink.com` / `admin123`
+- Alternatively, go to the **Register** tab to create a brand new account with simulated OTP validation!
 
 ---
 
