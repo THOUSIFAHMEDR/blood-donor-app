@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type JSX } from "react";
+import DonorMap from "./components/DonorMap";
 
 // ─── THEME & CONSTANTS ────────────────────────────────────────────────────────
 const COMPATIBILITY = {
@@ -24,7 +25,7 @@ const RECEIVE_FROM = {
 const BLOOD_GROUPS = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
 const CITIES = ["Bengaluru","Mumbai","Delhi","Hyderabad","Chennai","Pune","Kolkata","Ahmedabad"];
 
-const MOCK_DONORS: Array<{
+export interface Donor {
   id: number;
   name: string;
   blood: BloodGroup;
@@ -35,13 +36,17 @@ const MOCK_DONORS: Array<{
   lastDonated: string;
   gender: "male" | "female" | "other";
   age: number;
-}> = [
-  { id:1, name:"Arjun Sharma", blood:"O+", city:"Bengaluru", distance:2.3, time:"8 min", available:true, lastDonated:"2025-01-10", gender:"male", age:26 },
-  { id:2, name:"Priya Nair", blood:"A+", city:"Bengaluru", distance:4.1, time:"14 min", available:true, lastDonated:"2025-02-20", gender:"female", age:24 },
-  { id:3, name:"Mohammed Rafi", blood:"O-", city:"Bengaluru", distance:1.8, time:"6 min", available:true, lastDonated:"2025-03-05", gender:"male", age:30 },
-  { id:4, name:"Sneha Kulkarni", blood:"B+", city:"Bengaluru", distance:6.2, time:"20 min", available:false, lastDonated:"2025-01-28", gender:"female", age:22 },
-  { id:5, name:"Vikram Singh", blood:"AB+", city:"Bengaluru", distance:3.5, time:"12 min", available:true, lastDonated:"2024-12-15", gender:"male", age:35 },
-  { id:6, name:"Lakshmi Devi", blood:"O+", city:"Bengaluru", distance:5.0, time:"17 min", available:true, lastDonated:"2025-02-01", gender:"female", age:28 },
+  lat: number;
+  lng: number;
+}
+
+const MOCK_DONORS: Array<Donor> = [
+  { id:1, name:"Arjun Sharma", blood:"O+", city:"Bengaluru", distance:2.3, time:"8 min", available:true, lastDonated:"2025-01-10", gender:"male", age:26, lat:12.9850, lng:77.6050 },
+  { id:2, name:"Priya Nair", blood:"A+", city:"Bengaluru", distance:4.1, time:"14 min", available:true, lastDonated:"2025-02-20", gender:"female", age:24, lat:12.9550, lng:77.6250 },
+  { id:3, name:"Mohammed Rafi", blood:"O-", city:"Bengaluru", distance:1.8, time:"6 min", available:true, lastDonated:"2025-03-05", gender:"male", age:30, lat:12.9800, lng:77.5820 },
+  { id:4, name:"Sneha Kulkarni", blood:"B+", city:"Bengaluru", distance:6.2, time:"20 min", available:false, lastDonated:"2025-01-28", gender:"female", age:22, lat:12.9200, lng:77.5750 },
+  { id:5, name:"Vikram Singh", blood:"AB+", city:"Bengaluru", distance:3.5, time:"12 min", available:true, lastDonated:"2024-12-15", gender:"male", age:35, lat:12.9650, lng:77.5620 },
+  { id:6, name:"Lakshmi Devi", blood:"O+", city:"Bengaluru", distance:5.0, time:"17 min", available:true, lastDonated:"2025-02-01", gender:"female", age:28, lat:12.9320, lng:77.6120 },
 ];
 
 const MOCK_REQUESTS: Array<{
@@ -59,9 +64,9 @@ const MOCK_REQUESTS: Array<{
   { id:3, patient:"Suresh Kumar", blood:"B+", hospital:"Apollo Hospital", units:3, urgency:"Normal", time:"2 hrs ago", city:"Bengaluru" },
 ];
 
-type BloodGroup = "O-" | "O+" | "A-" | "A+" | "B-" | "B+" | "AB-" | "AB+";
+export type BloodGroup = "O-" | "O+" | "A-" | "A+" | "B-" | "B+" | "AB-" | "AB+";
 type BadgeSize = "sm" | "lg";
-type UrgencyLevel = "Critical" | "Urgent" | "Normal";
+export type UrgencyLevel = "Critical" | "Urgent" | "Normal";
 
 // ─── ATOMS & UTILITIES ────────────────────────────────────────────────────────
 const BloodBadge = ({ group, size = "sm" }: { group: BloodGroup; size?: BadgeSize }) => {
@@ -357,6 +362,7 @@ const RecipientDashboard = () => {
   const [urgency, setUrgency] = useState<UrgencyLevel>("Urgent");
   const [searched, setSearched] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
+  const [selectedDonorId, setSelectedDonorId] = useState<number | null>(null);
 
   const compatible = MOCK_DONORS
     .filter(d => (RECEIVE_FROM[bloodNeeded] as BloodGroup[]).includes(d.blood))
@@ -412,6 +418,13 @@ const RecipientDashboard = () => {
 
         {/* Results */}
         {searched && (<>
+          <DonorMap
+            donors={compatible}
+            center={[12.9716, 77.5946]}
+            selectedDonorId={selectedDonorId}
+            onSelectDonor={setSelectedDonorId}
+          />
+
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <h3 style={{ color:"#fff", margin:0, fontFamily:"'Playfair Display',serif", fontSize:18 }}>
               {compatible.length} Compatible Donors
@@ -420,9 +433,12 @@ const RecipientDashboard = () => {
           </div>
 
           {compatible.map(d => (
-            <div key={d.id} style={{
-              background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
-              borderRadius:16, padding:"16px 18px", marginBottom:12
+            <div key={d.id} onClick={() => setSelectedDonorId(d.id)} style={{
+              background:"rgba(255,255,255,0.03)",
+              border: selectedDonorId === d.id ? "1.5px solid #29B6F6" : "1px solid rgba(255,255,255,0.08)",
+              boxShadow: selectedDonorId === d.id ? "0 0 15px rgba(41,182,246,0.15)" : "none",
+              borderRadius:16, padding:"16px 18px", marginBottom:12, cursor:"pointer",
+              transition:"all 0.2s"
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
